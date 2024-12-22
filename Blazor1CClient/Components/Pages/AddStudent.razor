@@ -1,7 +1,8 @@
 ﻿@page "/students/add"
-@inject HttpClient Http
+@inject IStudentService StudentService
 @inject NavigationManager NavigationManager
 @using Blazor1CClient.Models
+@using Blazor1CClient.Services
 @rendermode RenderMode.InteractiveServer
 
 <h3>Add New Student</h3>
@@ -32,28 +33,21 @@
 </EditForm>
 
 @code {
-
     private Student newStudent = new Student();
 
     private async Task HandleValidSubmit()
     {
-    var studentData = new
-    {
-        ФИО = newStudent.ФИО,
-        Курс = newStudent.Курс,
-        ДатаРождения = newStudent.ДатаРождения
-    };
+        // Добавление нового студента через сервис
+        var isSuccess = await StudentService.AddStudentAsync(newStudent);
 
-        var response = await Http.PostAsJsonAsync("http://localhost/demohttp/hs/helloworld/postStudent", studentData);
-
-        if (response.IsSuccessStatusCode)
+        if (isSuccess)
         {
-            // Перенаправление после добавления студента
-            NavigationManager.NavigateTo("/students");
+            // Перенаправление после успешного добавления студента
+            NavigationManager.NavigateTo("/");
         }
         else
         {
-            // Обработка ошибки
+            // Обработка ошибки (например, показать уведомление)
             Console.WriteLine("Ошибка при добавлении студента");
         }
     }

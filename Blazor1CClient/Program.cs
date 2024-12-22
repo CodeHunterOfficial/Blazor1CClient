@@ -1,6 +1,7 @@
 using Blazor1CClient.Components;
 using Blazor1CClient.Configurations;
 using Blazor1CClient.Services;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -8,18 +9,18 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Добавление конфигурации API
-builder.Services.AddSingleton(builder.Configuration.GetSection("ApiSettings").Get<ApiSettings>());
+// Добавление конфигурации API с использованием Options
+builder.Services.Configure<ApiSettings>(builder.Configuration.GetSection("ApiSettings"));
 
-// Регистрация HttpClient с базовым адресом из конфигурации
+// Регистрация HttpClient с использованием ApiSettings из IOptions
 builder.Services.AddScoped(sp =>
 {
-    var apiSettings = sp.GetRequiredService<ApiSettings>();
+    var apiSettings = sp.GetRequiredService<IOptions<ApiSettings>>().Value;
     return new HttpClient { BaseAddress = new Uri(apiSettings.BaseUrl) };
 });
 
 // Регистрация DataService
-builder.Services.AddScoped<DataService>();
+builder.Services.AddScoped<IStudentService, StudentService>();  
 
 // Добавление CORS политики
 builder.Services.AddCors(options =>
@@ -31,14 +32,6 @@ builder.Services.AddCors(options =>
               .AllowAnyHeader(); // Разрешить любые заголовки
     });
 });
-
-// Регистрация сервисов для MVC или Web API (если необходимо)
-builder.Services.AddControllers();  // Для API
-builder.Services.AddRazorComponents();  // Если это Blazor Server
-
-// Регистрация локализатора для компонентов Syncfusion
-builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
-
 
 var app = builder.Build();
 

@@ -1,7 +1,8 @@
-﻿@page "/students"
-@inject HttpClient Http
-@using System.Net.Http.Json
+﻿@page "/"
+@inject IStudentService StudentService
 @using Blazor1CClient.Models
+@using Blazor1CClient.Services
+@inject ILogger<Students> Logger
 @rendermode RenderMode.InteractiveServer
 
 <h1>Student Data</h1>
@@ -16,18 +17,20 @@
     </div>
     <div class="input-group col">
         <input type="text" class="form-control" placeholder="Search student by name"
-               @bind="SearchString" @bind:event="oninput" @onchange="FilterStudents" />
-        @if (SearchString.Length > 0)
-        {
-            <div class="input-group-append">
-                <button class="btn btn-danger" @onclick="ResetSearch">
-                    <i class="fas fa-times"></i>
+               @bind="SearchString" @bind:event="oninput" />
+        <div class="input-group-append">
+            <button class="btn btn-outline-primary" @onclick="FilterStudents" title="Search">
+                <i class="fas fa-search"></i> Search
+            </button>
+            @if (SearchString.Length > 0)
+            {
+                <button class="btn btn-outline-danger" @onclick="ResetSearch" title="Clear">
+                    <i class="fas fa-times"></i> Clear
                 </button>
-            </div>
-        }
+            }
+        </div>
     </div>
 </div>
-
 <br />
 
 @if (studentList == null)
@@ -47,7 +50,7 @@ else
             </tr>
         </thead>
         <tbody>
-            @foreach (var student in studentList)
+            @foreach (var student in PaginatedStudents)
             {
                 <tr>
                     <td>@student.Код</td>
@@ -56,28 +59,48 @@ else
                     <td>@student.ДатаРождения</td>
                     <td>
                         <a href='/students/edit/@student.Код' class="btn btn-outline-dark" role="button">Edit</a>
-                        <button class="btn btn-danger"  onclick="@(async () => await DeleteStudent(student.Код))"> Delete</button>                        
+                        <button class="btn btn-danger" @onclick="@(async () => await DeleteStudent(student.Код))"> Delete</button>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
- }
+
+    <!-- Pagination controls -->
+    <div class="pagination">
+        <button class="btn btn-outline-primary" @onclick="() => ChangePage(Page - 1)" disabled="@IsFirstPage()">Previous</button>
+        <span>Page @Page of @TotalPages</span>
+        <button class="btn btn-outline-primary" @onclick="() => ChangePage(Page + 1)" disabled="@IsLastPage()">Next</button>
+    </div>
+}
 
 @code {
     private List<Student> studentList = new();
     private List<Student> searchStudentData = new();
+    private List<Student> PaginatedStudents = new();
     private string SearchString { get; set; } = string.Empty;
+    private int Page { get; set; } = 1;
+    private int PageSize { get; set; } = 2;
+    private int TotalPages => (int)Math.Ceiling(studentList.Count / (double)PageSize);
 
     protected override async Task OnInitializedAsync()
     {
+        Logger.LogInformation("Students page initialized");
         await GetStudents();
     }
 
     private async Task GetStudents()
     {
-        studentList = await Http.GetFromJsonAsync<List<Student>>("http://localhost/demohttp/hs/helloworld/getListOfStudents");
-        searchStudentData = studentList;
+        try
+        {
+            studentList = await StudentService.GetStudentsAsync();
+            searchStudentData = studentList;
+            ApplyPagination();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error while fetching student data");
+        }
     }
 
     private void FilterStudents()
@@ -92,21 +115,47 @@ else
         {
             studentList = searchStudentData;
         }
+        ApplyPagination();
     }
 
-    private async Task DeleteStudent(string studentCode)
-    {
-        var response = await Http.DeleteAsync($"http://localhost/demohttp/hs/helloworld/deleteStudent/{studentCode}");
-        if (response.IsSuccessStatusCode)
-        {
-            await GetStudents(); 
-        }
-        await GetStudents();
-    }
-    
     private void ResetSearch()
     {
         SearchString = string.Empty;
         studentList = searchStudentData;
+        ApplyPagination();
     }
+
+    private void ApplyPagination()
+    {
+        PaginatedStudents = studentList
+            .Skip((Page - 1) * PageSize)
+            .Take(PageSize)
+            .ToList();
+    }
+
+    private async Task DeleteStudent(string studentCode)
+    {
+        var isSuccess = await StudentService.DeleteStudentAsync(studentCode);
+        if (isSuccess)
+        {
+            Logger.LogInformation($"Student with code {studentCode} was deleted.");
+            await GetStudents();
+        }
+        else
+        {
+            Logger.LogError($"Failed to delete student with code {studentCode}");
+        }
+    }
+
+    private void ChangePage(int newPage)
+    {
+        if (newPage >= 1 && newPage <= TotalPages)
+        {
+            Page = newPage;
+            ApplyPagination();
+        }
+    }
+
+    private bool IsFirstPage() => Page == 1;
+    private bool IsLastPage() => Page == TotalPages;
 }

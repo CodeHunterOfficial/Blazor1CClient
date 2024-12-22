@@ -1,7 +1,8 @@
-﻿@page "/students/edit/{id:int}"
-@inject HttpClient Http
+﻿@page "/students/edit/{Код}"
+@inject IStudentService StudentService
 @inject NavigationManager NavigationManager
 @using Blazor1CClient.Models
+@using Blazor1CClient.Services
 @rendermode RenderMode.InteractiveServer
 
 <h3>Edit Student</h3>
@@ -32,18 +33,18 @@
 </EditForm>
 
 @code {
-    [Parameter] public int id { get; set; }
+    [Parameter] public string Код { get; set; }  
     private Student updatedStudent = new Student();
     private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        // Загружаем данные студента по ID
-        var response = await Http.GetAsync($"http://localhost/demohttp/hs/helloworld/getStudent/{id}");
+        // Загружаем данные студента по ID с использованием StudentService
+        var student = await StudentService.GetStudentByCodeAsync(Код);
 
-        if (response.IsSuccessStatusCode)
+        if (student != null)
         {
-            updatedStudent = await response.Content.ReadFromJsonAsync<Student>();
+            updatedStudent = student;
         }
         else
         {
@@ -55,19 +56,13 @@
 
     private async Task HandleValidSubmit()
     {
-        var studentData = new
-        {
-            ФИО = updatedStudent.ФИО,
-            Курс = updatedStudent.Курс,
-            ДатаРождения = updatedStudent.ДатаРождения
-        };
+        // Обновление данных студента через StudentService
+        var isSuccess = await StudentService.UpdateStudentAsync(Код, updatedStudent); 
 
-        var response = await Http.PutAsJsonAsync($"http://localhost/demohttp/hs/helloworld/updateStudent/000000010", studentData);
-
-        if (response.IsSuccessStatusCode)
+        if (isSuccess)
         {
             // Перенаправление после успешного обновления
-            NavigationManager.NavigateTo("/students");
+            NavigationManager.NavigateTo("/");
         }
         else
         {
