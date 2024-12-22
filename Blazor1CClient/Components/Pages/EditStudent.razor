@@ -1,0 +1,78 @@
+﻿@page "/students/edit/{id:int}"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Blazor1CClient.Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Edit Student</h3>
+
+<EditForm Model="@updatedStudent" OnValidSubmit="HandleValidSubmit" FormName="formEditStudent">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="ФИО">Full Name</label>
+        <InputText id="ФИО" @bind-Value="updatedStudent.ФИО" class="form-control" />
+        <ValidationMessage For="@(() => updatedStudent.ФИО)" />
+    </div>
+
+    <div class="form-group">
+        <label for="Курс">Course</label>
+        <InputNumber id="Курс" @bind-Value="updatedStudent.Курс" class="form-control" />
+        <ValidationMessage For="@(() => updatedStudent.Курс)" />
+    </div>
+
+    <div class="form-group">
+        <label for="ДатаРождения">Date of Birth</label>
+        <InputDate id="ДатаРождения" @bind-Value="updatedStudent.ДатаРождения" class="form-control" />
+        <ValidationMessage For="@(() => updatedStudent.ДатаРождения)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Changes</button>
+</EditForm>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Student updatedStudent = new Student();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Загружаем данные студента по ID
+        var response = await Http.GetAsync($"http://localhost/demohttp/hs/helloworld/getStudent/{id}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            updatedStudent = await response.Content.ReadFromJsonAsync<Student>();
+        }
+        else
+        {
+            Console.WriteLine("Ошибка при загрузке данных студента");
+        }
+
+        isLoading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var studentData = new
+        {
+            ФИО = updatedStudent.ФИО,
+            Курс = updatedStudent.Курс,
+            ДатаРождения = updatedStudent.ДатаРождения
+        };
+
+        var response = await Http.PutAsJsonAsync($"http://localhost/demohttp/hs/helloworld/updateStudent/000000010", studentData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Перенаправление после успешного обновления
+            NavigationManager.NavigateTo("/students");
+        }
+        else
+        {
+            // Обработка ошибки
+            Console.WriteLine("Ошибка при обновлении данных студента");
+        }
+    }
+}

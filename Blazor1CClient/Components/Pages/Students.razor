@@ -1,0 +1,112 @@
+﻿@page "/students"
+@inject HttpClient Http
+@using System.Net.Http.Json
+@using Blazor1CClient.Models
+@rendermode RenderMode.InteractiveServer
+
+<h1>Student Data</h1>
+<p>Blazor CRUD operations</p>
+
+<!-- Search bar -->
+<div class="row">
+    <div class="col-md-6">
+        <a href='/students/add' class="btn btn-primary" role="button">
+            <i class="fas fa-user-plus"></i> Add Student
+        </a>
+    </div>
+    <div class="input-group col">
+        <input type="text" class="form-control" placeholder="Search student by name"
+               @bind="SearchString" @bind:event="oninput" @onchange="FilterStudents" />
+        @if (SearchString.Length > 0)
+        {
+            <div class="input-group-append">
+                <button class="btn btn-danger" @onclick="ResetSearch">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+<br />
+
+@if (studentList == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped align-middle table-bordered">
+        <thead class="table-success">
+            <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Course</th>
+                <th>Date of Birth</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var student in studentList)
+            {
+                <tr>
+                    <td>@student.Код</td>
+                    <td>@student.ФИО</td>
+                    <td>@student.Курс</td>
+                    <td>@student.ДатаРождения</td>
+                    <td>
+                        <a href='/students/edit/@student.Код' class="btn btn-outline-dark" role="button">Edit</a>
+                        <button class="btn btn-danger"  onclick="@(async () => await DeleteStudent(student.Код))"> Delete</button>                        
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+ }
+
+@code {
+    private List<Student> studentList = new();
+    private List<Student> searchStudentData = new();
+    private string SearchString { get; set; } = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetStudents();
+    }
+
+    private async Task GetStudents()
+    {
+        studentList = await Http.GetFromJsonAsync<List<Student>>("http://localhost/demohttp/hs/helloworld/getListOfStudents");
+        searchStudentData = studentList;
+    }
+
+    private void FilterStudents()
+    {
+        if (!string.IsNullOrEmpty(SearchString))
+        {
+            studentList = searchStudentData
+                .Where(x => x.ФИО.IndexOf(SearchString, StringComparison.OrdinalIgnoreCase) != -1)
+                .ToList();
+        }
+        else
+        {
+            studentList = searchStudentData;
+        }
+    }
+
+    private async Task DeleteStudent(string studentCode)
+    {
+        var response = await Http.DeleteAsync($"http://localhost/demohttp/hs/helloworld/deleteStudent/{studentCode}");
+        if (response.IsSuccessStatusCode)
+        {
+            await GetStudents(); 
+        }
+        await GetStudents();
+    }
+    
+    private void ResetSearch()
+    {
+        SearchString = string.Empty;
+        studentList = searchStudentData;
+    }
+}

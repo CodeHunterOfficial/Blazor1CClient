@@ -1,0 +1,60 @@
+﻿@page "/students/add"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@using Blazor1CClient.Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Add New Student</h3>
+
+<EditForm Model="@newStudent" OnValidSubmit="HandleValidSubmit" FormName="formAddStudent">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="ФИО">Full Name</label>
+        <InputText id="ФИО" @bind-Value="newStudent.ФИО" class="form-control" />
+        <ValidationMessage For="@(() => newStudent.ФИО)" />
+    </div>
+
+    <div class="form-group">
+        <label for="Курс">Course</label>
+        <InputNumber id="Курс" @bind-Value="newStudent.Курс" class="form-control" />
+        <ValidationMessage For="@(() => newStudent.Курс)" />
+    </div>
+
+    <div class="form-group">
+        <label for="ДатаРождения">Date of Birth</label>
+        <InputDate id="ДатаРождения" @bind-Value="newStudent.ДатаРождения" class="form-control" />
+        <ValidationMessage For="@(() => newStudent.ДатаРождения)" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+
+    private Student newStudent = new Student();
+
+    private async Task HandleValidSubmit()
+    {
+    var studentData = new
+    {
+        ФИО = newStudent.ФИО,
+        Курс = newStudent.Курс,
+        ДатаРождения = newStudent.ДатаРождения
+    };
+
+        var response = await Http.PostAsJsonAsync("http://localhost/demohttp/hs/helloworld/postStudent", studentData);
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Перенаправление после добавления студента
+            NavigationManager.NavigateTo("/students");
+        }
+        else
+        {
+            // Обработка ошибки
+            Console.WriteLine("Ошибка при добавлении студента");
+        }
+    }
+}
